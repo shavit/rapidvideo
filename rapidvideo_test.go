@@ -54,15 +54,22 @@ func TestGetInfo(t *testing.T) {
     t.Error("Error upload a file", err.Error())
   }
 
-  if v.Code == "" {
+  if v == nil {
     t.Error("Empty video code")
   }
+
 }
 
 func TestUpload(t *testing.T) {
   var rv Rapidvideo = NewTestRapidVideo()
+  var err error
 
-  err := rv.Upload("")
+  err = rv.Upload("")
+  if err == nil {
+    t.Error("Should raise an error for invalid file path")
+  }
+
+  err = rv.Upload("test.mp4")
   if err != nil {
     t.Error("Error upload a file", err.Error())
   }
@@ -85,11 +92,11 @@ func TestRemoteStatus(t *testing.T) {
   var rv Rapidvideo = NewTestRapidVideo()
 
   status, err := rv.RemoteStatus("id")
-  if err != nil {
-    t.Error("Error getting a remote file upload status", err.Error())
+  if err == nil {
+    t.Error("Should raise an error for invalid object id")
   }
 
-  if status.ObjectCode == "" {
-    t.Error("Should get an object code")
+  if status != nil {
+    t.Error("Should have a nil status for invalid object id")
   }
 }

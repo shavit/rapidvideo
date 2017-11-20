@@ -21,9 +21,11 @@ type response struct {
 }
 
 type videoMeta struct {
-  Code string `json: "code"`
-  Name string `json: "name"`
-  Description string `json: "description"`
+  Code struct {
+    Code string `json: "code"`
+    Name string `json: "name"`
+    Description string `json: "description"`
+  } `json: "code"`
 }
 
 type uploadStatus struct {
@@ -48,7 +50,7 @@ type Rapidvideo interface {
   Upload(path string) (err error)
 
   // RemoteUpload remote upload a file
-  RemoteUpload(url string) (ok bool, err error)
+  RemoteUpload(u string) (ok bool, err error)
 
   // RemoteStatus check the status of the remote upload
   RemoteStatus(id string) (status *uploadStatus, err error)
@@ -113,7 +115,7 @@ func (rv *rapidvideo) SetProxy(u string) (err error) {
 
 // GetInfo check if a video is online
 func (rv *rapidvideo) GetInfo(code string) (v *videoMeta, err error) {
-  resp, err := rv.get(fmt.Sprintf("//objects.php?ac=info&apikey=%v&code=%v", rv.apiKey, code))
+  resp, err := rv.get(fmt.Sprintf("/objects.php?ac=info&apikey=%v&code=%v", rv.apiKey, code))
   if err != nil {
     return v, err
   }
@@ -185,13 +187,38 @@ func (rv *rapidvideo) Upload(path string) (err error) {
 }
 
 // RemoteUpload remote upload a file
-func (rv *rapidvideo) RemoteUpload(url string) (ok bool, err error) {
-  return ok, err
+func (rv *rapidvideo) RemoteUpload(u string) (ok bool, err error) {
+  resp, err := rv.get(fmt.Sprintf("/remote.php?ac=add&user_id=%v&url=%v", rv.userId, u))
+  if err != nil {
+    return ok, err
+  }
+
+  if resp.Status != 200 {
+    return ok, errors.New(resp.Msg)
+  }
+
+  return true, err
 }
 
 // RemoteStatus check the status of the remote upload
 func (rv *rapidvideo) RemoteStatus(id string) (status *uploadStatus, err error){
-  status = new(uploadStatus)
+  resp, err := rv.get(fmt.Sprintf("/remote.php?ac=check&user_id=%v&remote_id=%v", rv.userId, id))
+  if err != nil {
+    return status, err
+  }
+
+  if resp.Status != 200 {
+    return status, err
+  }
+
+  body, err := json.Marshal(resp.Result)
+  if err != nil {
+    return status, err
+  }
+
+  if err = json.Unmarshal(body, &status); err != nil {
+    return status, err
+  }
 
   return status, err
 }
