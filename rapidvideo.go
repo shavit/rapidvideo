@@ -1,13 +1,17 @@
 package rapidvideo
 
 import (
+  "bytes"
   "errors"
   "encoding/json"
   "fmt"
   "golang.org/x/net/proxy"
+  "io"
   "io/ioutil"
+  "mime/multipart"
   "net/http"
   "net/url"
+  "os"
 )
 
 type response struct {
@@ -132,6 +136,51 @@ func (rv *rapidvideo) GetInfo(code string) (v *videoMeta, err error) {
 
 // Upload upload a video file and receive the video id
 func (rv *rapidvideo) Upload(path string) (err error) {
+  var buf bytes.Buffer
+  var req *http.Request
+  var writer *multipart.Writer
+  var ioWriter io.Writer
+  var f *os.File
+
+  writer = multipart.NewWriter(&buf)
+  f, err = os.Open(path)
+  if err != nil {
+    return err
+  }
+  defer f.Close()
+
+  ioWriter, err = writer.CreateFormFile("file", path)
+  if err != nil {
+    return err
+  }
+
+  if _, err = io.Copy(ioWriter, f); err != nil {
+    return err
+  }
+
+  if ioWriter, err = writer.CreateFormField("user_id"); err != nil {
+    return err
+  }
+  if _, err = ioWriter.Write([]byte(rv.userId)); err != nil {
+    return err
+  }
+  writer.Close()
+
+  req, err = http.NewRequest("POST", "https://upload.rapidvideo.com/upload.rapidvideo.com/upload/index.php", &buf)
+  if err != nil {
+    return err
+  }
+
+  req.Header.Set("Content-Type", writer.FormDataContentType())
+  res, err := rv.client.Do(req)
+  if err != nil {
+    return err
+  }
+
+  if res.StatusCode != 200 {
+    return errors.New(fmt.Sprintf("Error uploading a file, expecting 200 got %v", res.StatusCode))
+  }
+
   return err
 }
 
@@ -143,6 +192,6 @@ func (rv *rapidvideo) RemoteUpload(url string) (ok bool, err error) {
 // RemoteStatus check the status of the remote upload
 func (rv *rapidvideo) RemoteStatus(id string) (status *uploadStatus, err error){
   status = new(uploadStatus)
-  
+
   return status, err
 }
