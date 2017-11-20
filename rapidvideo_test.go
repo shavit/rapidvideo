@@ -69,7 +69,7 @@ func TestUpload(t *testing.T) {
     t.Error("Should raise an error for invalid file path")
   }
 
-  err = rv.Upload("test.mp4")
+  err = rv.Upload("")
   if err != nil {
     t.Error("Error upload a file", err.Error())
   }
